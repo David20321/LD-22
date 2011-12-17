@@ -14,6 +14,7 @@ package
 	import wlfr.Time;
 	import wlfr.util.StringContainer;
 	import wlfr.util.wMath;
+	import wlfr.Keyboard;
 	import game.Game;
 	
 	import com.adobe.utils.*;
@@ -34,10 +35,10 @@ package
 		
 		private var time:Time;
 		private var the_game:Game;
+		private var keyboard:Keyboard;
 		
 		public function Main():void 
-		{
-			the_game = new Game();
+		{			
 			if (stage) init();
 			else addEventListener(Event.ADDED_TO_STAGE, init);
 		}
@@ -74,20 +75,19 @@ package
 				return;
 			}
 			
-			the_game.Draw(context3D, time);
+			the_game.Draw();
 			
 			context3D.present();
 		}
 		
 		private function Update():void {
-			the_game.Update(time);
+			the_game.Update();
 		}
 		
 		private function enterFrame(event:Event):void 
 		{
 			var num_steps:int = time.GetNumSteps();
 			
-			trace(num_steps);
 			for (var i:int = 0; i < num_steps; ++i) {
 				time.time += time.time_step; 
 				Update();
@@ -110,7 +110,19 @@ package
 		 	addEventListener(Event.ENTER_FRAME, enterFrame);
 			
 			time = new Time();
-			the_game.Init(context3D);
+			
+			the_game = new Game(keyboard, time, context3D);
+			the_game.Init();
+		}
+		
+		private function ReportKeyDown(e:KeyboardEvent):void 
+		{
+			keyboard.SetKeyDown(e.keyCode);
+		}
+		
+		private function ReportKeyUp(e:KeyboardEvent):void 
+		{
+			keyboard.SetKeyUp(e.keyCode);
 		}
 
 		private function init(e:Event = null):void 
@@ -148,6 +160,10 @@ package
 			}
 			
 			initGUI();
+			
+			keyboard = new Keyboard();
+		 	stage.addEventListener(KeyboardEvent.KEY_DOWN, ReportKeyDown);
+		 	stage.addEventListener(KeyboardEvent.KEY_UP, ReportKeyUp);
 		}
 	}
 }
