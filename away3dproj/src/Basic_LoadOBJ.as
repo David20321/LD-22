@@ -66,37 +66,21 @@ package
 	[SWF(backgroundColor="#000000", frameRate="60", quality="LOW")]
 	
 	public class Basic_LoadOBJ extends Sprite
-	{
-		//signature swf
-		[Embed(source="/../embeds/signature.swf", symbol="Signature")]
-		public var SignatureSwf:Class;
-		
+	{		
 		//Infinite, 3D head model
-		[Embed(source="/../embeds/head.obj", mimeType="application/octet-stream")]
+		[Embed(source="/../embeds/turner.obj", mimeType="application/octet-stream")]
 		private var HeadModel : Class;
 		
 		//Diffuse map texture
-		[Embed(source="/../embeds/head-diffuse.jpg")]
+		[Embed(source="/../embeds/IGF_Turner_color.jpg")]
 		private var Diffuse : Class;
-		
-		//Specular map texture
-		[Embed(source="/../embeds/head-specular.jpg")]
-		private var Specular : Class;
-		
-		//Normal map texture
-		[Embed(source="/../embeds/head-normal-tangent.jpg")]
-		private var Normal : Class;
-		
+				
 		//engine variables
 		private var scene:Scene3D;
 		private var camera:Camera3D;
 		private var view:View3D;
 		private var cameraController:HoverController;
-		
-		//signature variables
-		private var Signature:Sprite;
-		private var SignatureBitmap:Bitmap;
-		
+				
 		//material objects
 		private var headMaterial:BitmapMaterial;
 		private var subsurfaceMethod:SubsurfaceScatteringDiffuseMethod;
@@ -154,18 +138,10 @@ package
 			view.camera = camera;
 			
 			//setup controller to be used on the camera
-			cameraController = new HoverController(camera, null, 45, 10, 800);
+			cameraController = new HoverController(camera, null, 45, 10, 200);
 			
 			//view.addSourceURL("srcview/index.html");
 			addChild(view);
-			
-			//add signature
-			Signature = Sprite(new SignatureSwf());
-			SignatureBitmap = new Bitmap(new BitmapData(Signature.width, Signature.height, true, 0));
-			stage.quality = StageQuality.HIGH;
-			SignatureBitmap.bitmapData.draw(Signature);
-			stage.quality = StageQuality.LOW;
-			addChild(SignatureBitmap);
 			
 			addChild(new AwayStats(view));
 		}
@@ -190,30 +166,13 @@ package
 		{
 			//setup custom bitmap material
 			headMaterial = new BitmapMaterial(new Diffuse().bitmapData);
-			headMaterial.normalMap = new Normal().bitmapData;
-			headMaterial.specularMap = new Specular().bitmapData;
+			//headMaterial.normalMap = new Normal().bitmapData;
+			//headMaterial.specularMap = new Specular().bitmapData;
 			headMaterial.lights = [light];
 			headMaterial.gloss = 10;
-			headMaterial.specular = 3;
+			headMaterial.specular = 0;
 			headMaterial.ambientColor = 0x303040;
 			headMaterial.ambient = 1;
-			
-			//create subscattering diffuse method
-			subsurfaceMethod = new SubsurfaceScatteringDiffuseMethod(2048, 2);
-			subsurfaceMethod.scatterColor = 0xff7733;
-			subsurfaceMethod.scattering = .05;
-			subsurfaceMethod.translucency = 4;
-			headMaterial.diffuseMethod = subsurfaceMethod;
-			
-			//create fresnel specular method
-			fresnelMethod = new FresnelSpecularMethod(true);
-			headMaterial.specularMethod = fresnelMethod;
-			
-			//add default diffuse method
-			diffuseMethod = new BasicDiffuseMethod();
-			
-			//add default specular method
-			specularMethod = new BasicSpecularMethod();
 		}
 		
 		/**
@@ -251,9 +210,9 @@ package
 				cameraController.tiltAngle = 0.3 * (stage.mouseY - lastMouseY) + lastTiltAngle;
 			}
 			
-			light.x = Math.sin(getTimer()/10000) * 150000;
-			light.y = 1000;
-			light.z = Math.cos(getTimer()/10000) * 150000;
+			light.x = Math.sin(getTimer()/2000) * 1000;
+			light.y = 2000;
+			light.z = Math.cos(getTimer()/2000) * 1000;
 			
 			view.render();
 		}
@@ -301,10 +260,6 @@ package
 		 */
 		private function onKeyUp(event : KeyboardEvent) : void
 		{
-			headMaterial.gloss = (headMaterial.diffuseMethod == diffuseMethod)? 10 : 50;
-			headMaterial.specular = (headMaterial.diffuseMethod == diffuseMethod)? 3 : 1;
-			headMaterial.diffuseMethod = (headMaterial.diffuseMethod == diffuseMethod)? subsurfaceMethod : diffuseMethod;
-			headMaterial.specularMethod = (headMaterial.specularMethod == specularMethod)? fresnelMethod : specularMethod;
 		}
 		
 		/**
@@ -323,7 +278,6 @@ package
 		{
 			view.width = stage.stageWidth;
 			view.height = stage.stageHeight;
-			SignatureBitmap.y = stage.stageHeight - Signature.height;
 		}
 	}
 }
