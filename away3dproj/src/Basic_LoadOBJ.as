@@ -43,6 +43,8 @@ THE SOFTWARE.
 package
 {
 	import away3d.cameras.*;
+	import away3d.cameras.lenses.LensBase;
+	import away3d.cameras.lenses.PerspectiveLens;
 	import away3d.containers.*;
 	import away3d.controllers.*;
 	import away3d.core.base.*;
@@ -51,12 +53,19 @@ package
 	import away3d.events.*;
 	import away3d.library.*;
 	import away3d.library.assets.*;
-	import away3d.lights.*;
 	import away3d.loaders.*;
 	import away3d.loaders.misc.*;
 	import away3d.loaders.parsers.*;
 	import away3d.materials.*;
 	import away3d.materials.methods.*;
+	import away3d.primitives.WireframeAxesGrid;
+	import away3d.primitives.WireframeGrid;
+	import away3d.tools.Grid;
+	import flash.geom.Matrix3D;
+	import flash.media.SoundChannel;
+	import flash.text.TextField;
+	import mx.core.SoundAsset;
+	import wlfr.Keyboard;
 	
 	import flash.display.*;
 	import flash.events.*;
@@ -71,15 +80,22 @@ package
 		[Embed(source="/../embeds/turner.obj", mimeType="application/octet-stream")]
 		private var HeadModel : Class;
 		
-		//Diffuse map texture
-		[Embed(source="/../embeds/IGF_Turner_color.jpg")]
+		[Embed(source = "/../embeds/IGF_Turner_color.jpg")]
 		private var Diffuse : Class;
+		
+		[Embed (source = "../embeds/shot.mp3")]
+		private var shot_sound_file : Class;
+		
+		// Sound
+		private var shot_sound:SoundAsset;
+		private var sound_channels:Array;
+		private const num_sound_channels:uint = 10;
+		
 				
 		//engine variables
 		private var scene:Scene3D;
 		private var camera:Camera3D;
 		private var view:View3D;
-		private var cameraController:HoverController;
 				
 		//material objects
 		private var headMaterial:BitmapMaterial;
@@ -89,16 +105,22 @@ package
 		private var specularMethod:BasicSpecularMethod;
 		
 		//scene objects
-		private var light:PointLight;
 		private var direction:Vector3D;
 		private var headModel:Mesh;
 		
 		//navigation variables
 		private var move:Boolean = false;
+		private var pan_angle:Number = 0.0;
+		private var tilt_angle:Number = 0.0;
 		private var lastPanAngle:Number;
 		private var lastTiltAngle:Number;
 		private var lastMouseX:Number;
 		private var lastMouseY:Number;
+		private var mouse_x:Number;
+		private var mouse_y:Number;
+		private var tf:TextField;
+		private var keyboard:Keyboard;
+		private var grid:WireframeGrid;
 		
 		/**
 		 * Constructor
@@ -114,10 +136,13 @@ package
 		private function init():void
 		{
 			initEngine();
-			initLights();
 			initMaterials();
 			initObjects();
 			initListeners();
+		}
+		
+		private function OnSoundComplete(e:Event) {
+		
 		}
 		
 		/**
@@ -129,34 +154,36 @@ package
 			stage.align = StageAlign.TOP_LEFT;
 			
 			scene = new Scene3D();
+			grid = new WireframeGrid(10,10);
+			scene.addChild(grid);
 			
 			camera = new Camera3D();
+			camera.moveTo(2, 2, 2);
+			camera.lens.near = 0.1;
+			camera.lens.far = 100.0;
 			
 			view = new View3D();
 			view.antiAlias = 4;
 			view.scene = scene;
 			view.camera = camera;
-			
-			//setup controller to be used on the camera
-			cameraController = new HoverController(camera, null, 45, 10, 200);
+			view.backgroundColor = 0x333333;
 			
 			//view.addSourceURL("srcview/index.html");
 			addChild(view);
 			
 			addChild(new AwayStats(view));
-		}
-		
-		/**
-		 * Initialise the lights in a scene
-		 */
-		private function initLights():void
-		{
-			light = new PointLight();
-			light.x = 15000;
-			light.z = 15000;
-			light.color = 0xffddbb;
 			
-			scene.addChild(light);
+			tf = new TextField();
+			tf.textColor = 0xFFFFFF;
+			tf.y = 100;
+			tf.width = 200;
+			addChild(tf);
+			
+			shot_sound = new SoundAsset();
+			sound_channels = new Array(num_sound_channels);
+			for (var i:uint = 0; i < num_sound_channels; ++i) {
+				sound_channels[i] = new SoundChannel();
+			}
 		}
 		
 		/**
@@ -164,14 +191,8 @@ package
 		 */
 		private function initMaterials():void
 		{
-			//setup custom bitmap material
 			headMaterial = new BitmapMaterial(new Diffuse().bitmapData);
-			//headMaterial.normalMap = new Normal().bitmapData;
-			//headMaterial.specularMap = new Specular().bitmapData;
-			headMaterial.lights = [light];
-			headMaterial.gloss = 10;
-			headMaterial.specular = 0;
-			headMaterial.ambientColor = 0x303040;
+			headMaterial.ambientColor = 0xFFFFFF;
 			headMaterial.ambient = 1;
 		}
 		
@@ -195,9 +216,13 @@ package
 			addEventListener(Event.ENTER_FRAME, onEnterFrame);
 			stage.addEventListener(MouseEvent.MOUSE_DOWN, onMouseDown);
 			stage.addEventListener(MouseEvent.MOUSE_UP, onMouseUp);
-			stage.addEventListener(KeyboardEvent.KEY_UP, onKeyUp);
+			stage.addEventListener(MouseEvent.MOUSE_MOVE, onMouseMove);
 			stage.addEventListener(Event.RESIZE, onResize);
 			onResize();
+			
+			keyboard = new Keyboard();
+		 	stage.addEventListener(KeyboardEvent.KEY_DOWN, ReportKeyDown);
+		 	stage.addEventListener(KeyboardEvent.KEY_UP, ReportKeyUp);
 		}
 		
 		/**
@@ -206,15 +231,39 @@ package
 		private function onEnterFrame(event:Event):void
 		{
 			if (move) {
-				cameraController.panAngle = 0.3 * (stage.mouseX - lastMouseX) + lastPanAngle;
-				cameraController.tiltAngle = 0.3 * (stage.mouseY - lastMouseY) + lastTiltAngle;
+				pan_angle = 0.3 * (mouse_x - lastMouseX) + lastPanAngle;
+				tilt_angle = 0.3 * (mouse_y - lastMouseY) + lastTiltAngle;
+			}
+			tf.text = "Mouse: " + mouse_x + "   " + mouse_y + 
+				   "\nLast mouse: " + lastMouseX + "   " + lastMouseY + 
+				   "\nMove: " + move;
+			
+			
+			var vec:Vector3D = new Vector3D(0,0,2);
+			var mat:Matrix3D = new Matrix3D();
+			mat.appendRotation(tilt_angle, new Vector3D(-1, 0, 0));
+			mat.appendRotation(pan_angle, new Vector3D(0, 1, 0));
+			vec = mat.transformVector(vec);
+			view.camera.moveTo(vec.x, vec.y+1.0, vec.z);
+			view.camera.lookAt(new Vector3D(0, 1.0, 0));
+			
+			if (keyboard.WasKeyPressedThisStep(keyboard.GetKeyCode("d"))) {
+				trace("Pow!");
 			}
 			
-			light.x = Math.sin(getTimer()/2000) * 1000;
-			light.y = 2000;
-			light.z = Math.cos(getTimer()/2000) * 1000;
-			
 			view.render();
+			
+			keyboard.Update();
+		}
+		
+		private function ReportKeyDown(e:KeyboardEvent):void 
+		{
+			keyboard.SetKeyDown(e.keyCode);
+		}
+		
+		private function ReportKeyUp(e:KeyboardEvent):void 
+		{
+			keyboard.SetKeyUp(e.keyCode);
 		}
 		
 		/**
@@ -224,9 +273,6 @@ package
 		{
 			if (event.asset.assetType == AssetType.MESH) {
 				headModel = event.asset as Mesh;
-				headModel.geometry.scale(100); //TODO scale cannot be performed on mesh when using sub-surface diffuse method
-				headModel.y = -50;
-				headModel.rotationY = 180;
 				headModel.material = headMaterial;
 				
 				scene.addChild(headModel);
@@ -238,12 +284,19 @@ package
 		 */
 		private function onMouseDown(event:MouseEvent):void
 		{
-			lastPanAngle = cameraController.panAngle;
-			lastTiltAngle = cameraController.tiltAngle;
-			lastMouseX = stage.mouseX;
-			lastMouseY = stage.mouseY;
+			lastPanAngle = pan_angle;
+			lastTiltAngle = tilt_angle;
+			lastMouseX = mouse_x;
+			lastMouseY = mouse_y;
 			move = true;
 			stage.addEventListener(Event.MOUSE_LEAVE, onStageMouseLeave);
+		}
+		
+		
+		private function onMouseMove(event:MouseEvent):void
+		{
+			mouse_x = event.stageX;
+			mouse_y = event.stageY;
 		}
 		
 		/**
