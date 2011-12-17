@@ -71,6 +71,7 @@ package
 	import flash.events.*;
 	import flash.geom.Vector3D;
 	import flash.utils.getTimer;
+	import net.flashpunk.Sfx;
 	
 	[SWF(backgroundColor="#000000", frameRate="60", quality="LOW")]
 	
@@ -85,12 +86,6 @@ package
 		
 		[Embed (source = "../embeds/shot.mp3")]
 		private var shot_sound_file : Class;
-		
-		// Sound
-		private var shot_sound:SoundAsset;
-		private var sound_channels:Array;
-		private const num_sound_channels:uint = 10;
-		
 				
 		//engine variables
 		private var scene:Scene3D;
@@ -121,6 +116,7 @@ package
 		private var tf:TextField;
 		private var keyboard:Keyboard;
 		private var grid:WireframeGrid;
+		private var shoot_sfx:Sfx;
 		
 		/**
 		 * Constructor
@@ -179,11 +175,7 @@ package
 			tf.width = 200;
 			addChild(tf);
 			
-			shot_sound = new SoundAsset();
-			sound_channels = new Array(num_sound_channels);
-			for (var i:uint = 0; i < num_sound_channels; ++i) {
-				sound_channels[i] = new SoundChannel();
-			}
+			shoot_sfx = new Sfx(shot_sound_file);
 		}
 		
 		/**
@@ -248,7 +240,7 @@ package
 			view.camera.lookAt(new Vector3D(0, 1.0, 0));
 			
 			if (keyboard.WasKeyPressedThisStep(keyboard.GetKeyCode("d"))) {
-				trace("Pow!");
+				shoot_sfx.play();
 			}
 			
 			view.render();
