@@ -6,12 +6,14 @@ package game
 	import wlfr.gfx.Model;
 	import wlfr.Time;
 	import wlfr.Keyboard;
+	import wlfr.gfx.ObjLoader;
 	
 	public class Game 
 	{
 		public var keys:Keyboard;
 		public var context3D:Context3D;
 		public var time:Time;
+		public var obj_loader:ObjLoader;
 		
 		private var model:Model;
 		private var tri_rotation:Number = 0.0;
@@ -21,6 +23,7 @@ package game
 			keys = _keys;
 			time = _time;
 			context3D = _context3D;
+			obj_loader = new ObjLoader("Rapier.obj");
 			
 			model = new Model();
 		}
