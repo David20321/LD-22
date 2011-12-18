@@ -79,7 +79,10 @@ package
 	{		
 		//Infinite, 3D head model
 		[Embed(source="/../embeds/turner.obj", mimeType="application/octet-stream")]
-		private var HeadModel : Class;
+		private var turner_base_file : Class;
+		
+		[Embed(source="/../embeds/turner_morph.obj", mimeType="application/octet-stream")]
+		private var turner_morph_file : Class;
 		
 		[Embed(source = "/../embeds/IGF_Turner_color.jpg")]
 		private var Diffuse : Class;
@@ -101,7 +104,10 @@ package
 		
 		//scene objects
 		private var direction:Vector3D;
-		private var headModel:Mesh;
+		private var turner_base:Mesh;
+		private var turner_morph:Mesh;
+		private var turner_base_token:AssetLoaderToken;
+		private var turner_morph_token:AssetLoaderToken;
 		
 		//navigation variables
 		private var move:Boolean = false;
@@ -196,8 +202,10 @@ package
 			//default available parsers to all
 			Parsers.enableAllBundled()
 			
-			AssetLibrary.addEventListener(AssetEvent.ASSET_COMPLETE, onAssetComplete);
-			AssetLibrary.loadData(new HeadModel());
+			turner_base_token = AssetLibrary.loadData(new turner_base_file());
+			turner_base_token.addEventListener(AssetEvent.ASSET_COMPLETE, onBaseAssetComplete);
+			turner_morph_token= AssetLibrary.loadData(new turner_morph_file());
+			turner_morph_token.addEventListener(AssetEvent.ASSET_COMPLETE, onMorphAssetComplete);
 		}
 		
 		/**
@@ -230,7 +238,6 @@ package
 				   "\nLast mouse: " + lastMouseX + "   " + lastMouseY + 
 				   "\nMove: " + move;
 			
-			
 			var vec:Vector3D = new Vector3D(0,0,2);
 			var mat:Matrix3D = new Matrix3D();
 			mat.appendRotation(tilt_angle, new Vector3D(-1, 0, 0));
@@ -261,13 +268,25 @@ package
 		/**
 		 * Listener function for asset complete event on loader
 		 */
-		private function onAssetComplete(event:AssetEvent):void
+		private function onBaseAssetComplete(event:AssetEvent):void
 		{
 			if (event.asset.assetType == AssetType.MESH) {
-				headModel = event.asset as Mesh;
-				headModel.material = headMaterial;
+				turner_base = event.asset as Mesh;
+				turner_base.material = headMaterial;
 				
-				scene.addChild(headModel);
+				scene.addChild(turner_base);
+			}
+		}
+		
+		private function onMorphAssetComplete(event:AssetEvent):void
+		{
+			if (event.asset.assetType == AssetType.MESH) {
+				turner_morph = event.asset as Mesh;
+				turner_morph.material = headMaterial;
+				
+				scene.addChild(turner_morph);
+				
+				turner_morph.moveTo(1, 0, 0);
 			}
 		}
 		
